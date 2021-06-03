@@ -11,6 +11,7 @@ require(plyr)
 require(stringr)
 require(OutlierDetection)
 require(utils)
+require(taxize)
 
 ##Load data----
 
@@ -42,3 +43,17 @@ sp.table <- df %>%
 #if a species doesn't have mass for one sex, it tends not to have total length either
 
 write.csv(sp.table, "sp.table.csv")
+
+sp.table <- read.csv("https://data.cyverse.org/dav-anon/iplant/home/rwalls/FuTRES_data/SSD/sp.table.csv", header = TRUE)
+  
+sp <- sp.table$scientificName
+
+itis_hierarchy(sp, what = "full")
+
+get_ids(sp, db = "itis")
+
+sp.id <- c()
+for (i in 1:length(sp)){
+  x <- get_ids(sp[i], db = "itis")
+  sp.id <- append(sp.id, x$itis[[1]])
+}
