@@ -1,7 +1,8 @@
+# Trend of sexual dimorphism at the species level across Rodentia
 # Meghan A. Balk
 # balkm@email.arizona.edu
 
-##Load packages----
+##load packages----
 require(tidyverse)
 require(nlme)
 require(dplyr)
@@ -9,15 +10,30 @@ require(ggplot2)
 require(reshape2)
 require(plyr)
 require(stringr)
-require(OutlierDetection)
 require(utils)
 require(taxize)
+library(picante)
+library(ape)
+library(adephylo)
+library(ade4)
+library(phylobase)
+library(geiger)
+library(phytools)
+library(AICcmodavg)
+library(caper)
+require(lmodel2)
+require(visreg)
+require(car)
+require(ggtree)
 
-##Load data----
+##load data----
 
 options(stringsAsFactors = FALSE)
 
-data <- read.csv("https://de.cyverse.org/dl/d/7B6941EE-1FED-4AAE-9D8A-8AC76DB0AC98/data.all.csv", header = TRUE, stringsAsFactors = FALSE)
+data <- read.csv("https://data.cyverse.org/dav-anon/iplant/home/rwalls/FuTRES_data/Projects/BestPracticesData/V1/data.all.csv", header = TRUE)
+tree <- read.nexus("https://data.cyverse.org/dav-anon/iplant/home/rwalls/FuTRES_data/Projects/SFritz.tre")
+
+##manipulate data----
 
 data$sex[data$sex == "Male" | data$sex == "M" | data$sex == "males" | data$sex == "males males" | data$sex == "male male" | data$sex == "Male "] <- "male"
 data$sex[data$sex == "Female" | data$sex == "F" | data$sex == "females" | data$sex == "females females" | data$sex == "female female"] <- "female"
@@ -29,7 +45,7 @@ df <- df %>%
 
 write.csv(df, "ssd.df.csv")
 
-df <- read.csv("https://data.cyverse.org/dav-anon/iplant/home/rwalls/FuTRES_data/SSD/ssd.df.csv", header = TRUE, stringsAsFactors = FALSE)
+df <- read.csv("https://data.cyverse.org/dav-anon/iplant/home/rwalls/FuTRES_data/Projects/SSD_Rodents/ssd.df.csv", header = TRUE)
 
 sp.table <- df %>%
   dplyr::group_by(scientificName, sex, measurementType) %>%
@@ -51,7 +67,7 @@ sp.table <- df %>%
 
 write.csv(sp.table, "sp.table.csv")
 
-sp.table <- read.csv("https://data.cyverse.org/dav-anon/iplant/home/rwalls/FuTRES_data/SSD/sp.table.csv", header = TRUE)
+sp.table <- read.csv("https://data.cyverse.org/dav-anon/iplant/home/rwalls/FuTRES_data/Projects/SSD_Rodents/sp.table.csv", header = TRUE)
 
 sp <- sp.table$scientificName
 
@@ -61,7 +77,7 @@ sp_out <- tax_name(sp, get = 'order', db = 'ncbi')
 
 write.csv(sp_out, "sp.taxonomy.csv")
 
-sp_out <- read.csv("https://data.cyverse.org/dav-anon/iplant/home/rwalls/FuTRES_data/SSD/sp.taxonomy.csv", header = TRUE, stringsAsFactors = FALSE)
+sp_out <- read.csv("https://data.cyverse.org/dav-anon/iplant/home/rwalls/FuTRES_data/Projects/SSD_Rodents/sp.taxonomy.csv", header = TRUE)
 
 #2-tailed t test to see if different and get direction
 #add columns "significant" (T/F) and "direction" (M/F)
@@ -73,15 +89,19 @@ rodent.sp <- rodentia$query
 
 df.rodent <- df[df$scientificName %in% rodent.sp,]
 
+write.csv(df.rodent, "rodents.csv")
+
+df.rodent <- read.csv("https://data.cyverse.org/dav-anon/iplant/home/rwalls/FuTRES_data/Projects/SSD_Rodents/rodents.csv", header = TRUE)
+
 rodent.table <- df.rodent %>%
   dplyr::group_by(scientificName, sex, measurementType) %>%
   tally() %>%
   filter(n >= 10) %>%
   mutate(sex.measType = paste(sex, ".", measurementType, sep = "")) %>%
-  select(-measurementType) %>%
+  dplyr::select(-measurementType) %>%
   spread(key = sex.measType, value = n) %>%
   dplyr::group_by(scientificName) %>%
-  select(-sex) %>%
+  dplyr::select(-sex) %>%
   dplyr::summarise(female.mass = sum(female.mass, na.rm = TRUE),
                    male.mass = sum(male.mass, na.rm = TRUE),
                    female.total.length = sum(female.total.length, na.rm = TRUE),
@@ -90,10 +110,11 @@ rodent.table <- df.rodent %>%
   filter(tots > 0) %>%
   as.data.frame()
 
-write.csv(df.rodent, "rodents.csv")
+write.csv(rodent.table, "rodent.table.csv")
 
-df.rodent <- read.csv("https://data.cyverse.org/dav-anon/iplant/home/rwalls/FuTRES_data/SSD/rodents.csv", header = TRUE, stringsAsFactors = FALSE)
+rodent.table <- read.csv("https://data.cyverse.org/dav-anon/iplant/home/rwalls/FuTRES_data/Projects/SSD_Rodents/rodent.table.csv", header = TRUE)
 
+##PeMa test----
 #two sample test; two sided
 pema <- df.rodent[df.rodent$scientificName == "Peromyscus maniculatus",]
 tt <- t.test(pema$measurementValue[pema$measurementType == "mass" & pema$sex == "male"],
@@ -118,7 +139,7 @@ tt$estimate[[2]]
 tg$p.value #if TRUE tg$p.value <= 0.05, put "M" in direction
 tl$p.value #if TRUE tl$p.value <= 0.05, put "F" in direction
 
-#try on larger subset
+##try on larger subset
 columns <- c("sp.name",
             "n.male",
             "n.female",
@@ -176,6 +197,8 @@ for(i in 1:length(test.sp)){
   }
 }
 
+##t-test for all Rodentia----
+#two sample test; two sided
 #capture sample size for M and F
 #extract sig level
 #extract direction
@@ -239,7 +262,8 @@ for(i in 1:length(rodent.sp)){
 }
 
 write.csv(rodent.t.test.mass, "rodent.t.test.mass.csv")
-  
+rodent.t.test.mass <- read.csv("https://data.cyverse.org/dav-anon/iplant/home/rwalls/FuTRES_data/Projects/SSD_Rodents/rodent.t.test.mass.csv", header = TRUE)
+
 rodent.t.test.length <- data.frame(rodent.sp, matrix(ncol = length(columns))) #should have 188 rows 
 colnames(rodent.t.test.length) = columns
 
@@ -284,5 +308,124 @@ for(i in 1:length(rodent.sp)){
 }
 
 write.csv(rodent.t.test.length, "rodent.t.test.length.csv")
+
+rodent.t.test.length <- read.csv("https://data.cyverse.org/dav-anon/iplant/home/rwalls/FuTRES_data/Projects/SSD_Rodents/rodent.t.test.length.csv", header = TRUE)
+
+##plot species-level relationships----
+
+##mass
+p <- ggplot(data = rodent.t.test.mass) +
+     geom_point(aes(x = log10(female.mean), y = log10(male.mean))) +
+     geom_smooth(aes(x = log10(female.mean), y = log10(male.mean))) +
+     ggtitle("Rodentia") +
+     theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+           panel.background = element_blank(), axis.line = element_line(colour = "black"),
+           legend.position = "none") +
+     scale_y_continuous(name = expression(log[10]~Male~Body~Mass~(g))) +
+     scale_x_continuous(name = expression(log[10]~Female~Body~Mass~(g)))
+ggsave(p, file=paste0("plot_log_Rodentia_mass.png"), width = 14, height = 10, units = "cm")
+
+mass.model <- summary(lm(log10(rodent.t.test.mass$male.mean) ~ log10(rodent.t.test.mass$female.mean)))
+
+mass.stats <- data.frame(scientificName = "Rodentia",
+                         comparison = ("male mass/female mass"),
+                         intercept = mass.model$coefficients[[1]],
+                         slope = mass.model$coefficients[[2]],
+                         resid.std.err = mass.model$sigma,
+                         df = max(mass.model$df),
+                         std.err.slope =  mass.model$coefficients[4],
+                         std.err.intercept = mass.model$coefficients[3],
+                         r.squared = mass.model$r.squared,
+                         p.value = mass.model$coefficients[,4][[2]],
+                         sample.size = nrow(rodent.t.test.mass),
+                         male.sample.size = sum(rodent.t.test.mass$n.male),
+                         female.sample.size = sum(rodent.t.test.mass$n.female))
+
+##length
+p <- ggplot(data = rodent.t.test.length) +
+  geom_point(aes(x = log10(female.mean), y = log10(male.mean))) +
+  geom_smooth(aes(x = log10(female.mean), y = log10(male.mean))) +
+  ggtitle("Rodentia") +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(), axis.line = element_line(colour = "black"),
+        legend.position = "none") +
+  scale_y_continuous(name = expression(log[10]~Male~Total~Length~(mm))) +
+  scale_x_continuous(name = expression(log[10]~Female~Total~Length~(mm)))
+ggsave(p, file=paste0("plot_log_Rodentia_length.png"), width = 14, height = 10, units = "cm")
+
+length.model <- summary(lm(log10(rodent.t.test.length$male.mean) ~ log10(rodent.t.test.length$female.mean)))
+
+length.stats <- data.frame(scientificName = "Rodentia",
+                           comparison = ("male length/female length"),
+                           intercept = length.model$coefficients[[1]],
+                           slope = length.model$coefficients[[2]],
+                           resid.std.err = length.model$sigma,
+                           df = max(length.model$df),
+                           std.err.slope =  length.model$coefficients[4],
+                           std.err.intercept = length.model$coefficients[3],
+                           r.squared = length.model$r.squared,
+                           p.value = length.model$coefficients[,4][[2]],
+                           sample.size = nrow(rodent.t.test.length),
+                           male.sample.size = sum(rodent.t.test.length$n.male),
+                           female.sample.size = sum(rodent.t.test.length$n.female))
+
+rodentia.stats <- rbind(mass.stats, length.stats)
+
+write.csv(rodentia.stats, "rodentia.model.stats.csv")
+
+##PGLS----
+
+##mass
+# make trees match
+#replace spaces with underscores
+rodent.mass <- rodent.t.test.mass %>%
+  drop_na(male.mean, female.mean)
+rodent.mass$sp.name <- gsub('([[:punct:]])|\\s+', '_', rodent.mass$sp.name)
+rownames(rodent.mass) <- rodent.mass$sp.name
+# to drop the species from the tree that are not in the dataset
+mamm_speTree <- drop.tip(tree, tree$tip.label[!is.element(tree$tip.label, rownames(rodent.mass))])
+# to match the species in the tree and in the dataset
+rodent.mass <- rodent.mass[match(mamm_speTree$tip.label, rodent.mass$sp.name),]
+names(rodent.mass)
+length(rodent.mass$sp.name)
+length(mamm_speTree$tip.label)
+
+mamm_ssd_pgls <- gls(log10(male.mean) ~ log10(female.mean),
+                     data = rodent.mass,
+                     correlation = corPagel(0, phy = mamm_speTree, fixed = FALSE),
+                     method = "ML") ### What does REML mean??
+
+
+##figure of tree with t-test results
+
+#col_color <- c("gray", "deepsky blue4", "lightsalmon4")
+rodent.mass$color <- "gray"
+rodent.mass$color[rodent.mass$direct == "F"] <- "deepskyblue4"
+rodent.mass$color[rodent.mass$direct == "M"] <- "lightsalmon4"
+
+rodent.direction <- rodent.mass %>%
+  dplyr::select(sp.name, direction)
+
+p <- ggtree(mamm_speTree, 
+            aes(color = direction),
+            branch.length='none', 
+            layout='circular') %<+% 
+  rodent.direction +  
+
+p %<+% rodent.direction +
+  geom_(aes(color = direction,
+            color = "black", #label font
+            geom = "label", #labels not text
+            label.padding = unit(0.15, "lines"), #amount of padding around labels
+            label.size = 0)) + 
+  scale_color_manual(values=c("gray", "deepskyblue4","lightsalmon4"))
+                
+                
+                
++ #size of label border
+  theme(legend.position = c(0.5, 0.2),
+        legend.title = element_text("Direction of SSD"),
+        lengend.key = element_blank())
+
 
 
