@@ -1,6 +1,6 @@
 # Trend of sexual dimorphism at the species level across Rodentia
 # Meghan A. Balk
-# balkm@email.arizona.edu
+# meghan.balk@gmail.com
 
 ##load packages----
 require(tidyverse)
@@ -30,37 +30,32 @@ require(ggtree)
 
 options(stringsAsFactors = FALSE)
 
-data <- read.csv("https://data.cyverse.org/dav-anon/iplant/home/rwalls/FuTRES_data/Projects/BestPracticesData/V1/data.all.csv", header = TRUE)
+data <- read.csv("log.normal.flagged.data.csv", header = TRUE)
 tree <- read.nexus("https://data.cyverse.org/dav-anon/iplant/home/rwalls/FuTRES_data/Projects/SFritz.tre")
 
 ##manipulate data----
 
-data$sex[data$sex == "Male" | data$sex == "M" | data$sex == "males" | data$sex == "males males" | data$sex == "male male" | data$sex == "Male "] <- "male"
-data$sex[data$sex == "Female" | data$sex == "F" | data$sex == "females" | data$sex == "females females" | data$sex == "female female"] <- "female"
-
-df <- data[data$lifeStage == "Adult" & (data$sex == "male" | data$sex == "female") & (data$measurementType == "mass" | data$measurementType == "total.length"),]
+df <- data[data$lifeStage == "adult" & (data$sex == "male" | data$sex == "female") & (data$measurementType == "{body mass}" | data$measurementType == "{body length}"),]
 
 df <- df %>%
   drop_na(measurementValue)
 
 write.csv(df, "ssd.df.csv")
 
-df <- read.csv("https://data.cyverse.org/dav-anon/iplant/home/rwalls/FuTRES_data/Projects/SSD_Rodents/ssd.df.csv", header = TRUE)
-
 sp.table <- df %>%
   dplyr::group_by(scientificName, sex, measurementType) %>%
   tally() %>%
   filter(n >= 10) %>%
   mutate(sex.measType = paste(sex, ".", measurementType, sep = "")) %>%
-  select(-measurementType) %>%
+  dplyr::select(-measurementType) %>%
   spread(key = sex.measType, value = n) %>%
   dplyr::group_by(scientificName) %>%
-  select(-sex) %>%
-  dplyr::summarise(female.mass = sum(female.mass, na.rm = TRUE),
-                   male.mass = sum(male.mass, na.rm = TRUE),
-                   female.total.length = sum(female.total.length, na.rm = TRUE),
-                   male.total.length = sum(male.total.length, na.rm = TRUE),
-                   tots = isTRUE(female.mass >= 10 & male.mass >= 10) + isTRUE(female.total.length >= 10 & male.total.length >= 10)) %>%
+  dplyr::select(-sex) %>%
+  dplyr::summarise(female.mass = sum(`female.{body mass}`, na.rm = TRUE),
+                   male.mass = sum(`male.{body mass}`, na.rm = TRUE),
+                   female.total.length = sum(`female.{body length}`, na.rm = TRUE),
+                   male.total.length = sum(`male.{body length}`, na.rm = TRUE),
+                   tots = isTRUE(`female.{body mass}` >= 10 & `male.{body mass}` >= 10) + isTRUE(`female.{body length}` >= 10 & `male.{body length}` >= 10)) %>%
   filter(tots > 0) %>%
   as.data.frame()
 #if a species doesn't have mass for one sex, it tends not to have total length either
