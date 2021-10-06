@@ -4,7 +4,6 @@
 
 ##load packages----
 require(tidyverse)
-require(nlme)
 require(dplyr)
 require(ggplot2)
 require(reshape2)
@@ -12,29 +11,16 @@ require(plyr)
 require(stringr)
 require(utils)
 require(taxize)
-library(picante)
-library(ape)
-library(adephylo)
-library(ade4)
-library(phylobase)
-library(geiger)
-library(phytools)
-library(AICcmodavg)
-library(caper)
-require(lmodel2)
-require(visreg)
-require(car)
-require(ggtree)
 
 ##load data----
 
 options(stringsAsFactors = FALSE)
 
-data <- read.csv("log.normal.flagged.data.csv", header = TRUE)
-tree <- read.nexus("https://data.cyverse.org/dav-anon/iplant/home/rwalls/FuTRES_data/Projects/SFritz.tre")
+data <- read.csv("BPP.data.csv", header = TRUE)
 
 ##manipulate data----
 
+unique(data$measurementStatus)
 status <- c("juvenile.quant", "juvenile.sd", "outlier.sd", "outlier.quant", "juvenile.log.sd", "outlier.log.sd", "outlier")
 
 df <- data[data$lifeStage == "adult" & 
@@ -44,14 +30,14 @@ df <- data[data$lifeStage == "adult" &
            data$measurementType == "{tail length}") &
           !(data$measurementStatus %in% status),]
 df <- df %>%
-  select(-(X.4, X.3, X.2, X.1, X, traits, normality, logMeasurementValue, lowerLimit, upperLImit, lowerLimitMethod, upperLimitMethod, meanValue, sdValue, meanMethod, sdMethod))
+  dplyr::select(-X.4, -X.3, -X.2, -X.1, -X, -traits, -normality, -logMeasurementValue, -lowerLimit, -upperLimit, -lowerLimitMethod, -upperLimitMethod, -meanValue, -sdValue, -meanMethod, -sdMethod)
 
-data.short <- df %>%
-  pivot_wider(names_from = measurementType, values_from = measurementValue) %>%
-  as.data.frame()
-colnames(data.short)
+#data.short <- df %>%
+#  pivot_wider(names_from = measurementType, values_from = measurementValue) %>%
+#  as.data.frame()
+#colnames(data.short)
 
-data.short$`{head body length}` <- data.short$`{body length}` - data.short$`{tail length}`
+#data.short$`{head body length}` <- data.short$`{body length}` - data.short$`{tail length}`
 
 df <- df %>%
   drop_na(measurementValue)
@@ -121,16 +107,16 @@ write.csv(rodent.table, "rodent.table.csv")
 ##PeMa test----
 #two sample test; two sided
 pema <- df.rodent[df.rodent$scientificName == "Peromyscus maniculatus",]
-tt <- t.test(pema$measurementValue[pema$measurementType == "mass" & pema$sex == "male"],
-             pema$measurementValue[pema$measurementType == "mass" & pema$sex == "female"],
+tt <- t.test(pema$measurementValue[pema$measurementType == "{body mass}" & pema$sex == "male"],
+             pema$measurementValue[pema$measurementType == "{body mass}" & pema$sex == "female"],
              alternative = "two.sided", paired = FALSE)
 #are males greater than females?
-tg <- t.test(pema$measurementValue[pema$measurementType == "mass" & pema$sex == "male"],
-             pema$measurementValue[pema$measurementType == "mass" & pema$sex == "female"],
+tg <- t.test(pema$measurementValue[pema$measurementType == "{body mass}" & pema$sex == "male"],
+             pema$measurementValue[pema$measurementType == "{body mass}" & pema$sex == "female"],
              alternative = "greater", paired = FALSE)
 #are males smaller than females?
-tl <- t.test(pema$measurementValue[pema$measurementType == "mass" & pema$sex == "male"],
-             pema$measurementValue[pema$measurementType == "mass" & pema$sex == "female"],
+tl <- t.test(pema$measurementValue[pema$measurementType == "{body mass}" & pema$sex == "male"],
+             pema$measurementValue[pema$measurementType == "{body mass}" & pema$sex == "female"],
              alternative = "less", paired = FALSE)
 #p.value
 tt$p.value #if TRUE tt$p.value <= 0.05, put "TRUE" in sig
@@ -163,16 +149,16 @@ colnames(test.t.test) = columns
 for(i in 1:length(test.sp)){
   test.t.test$sp.name[i] <- test.sp[i]
   test.t.test$n.male[i] <- nrow(df.rodent[df.rodent$scientificName == test.sp[i] & 
-                                          df.rodent$measurementType == "mass" & 
+                                          df.rodent$measurementType == "{body mass}" & 
                                           df.rodent$sex == "male",])
   test.t.test$n.female[i] <- nrow(df.rodent[df.rodent$scientificName == test.sp[i] & 
-                                            df.rodent$measurementType == "mass" & 
+                                            df.rodent$measurementType == "{body mass}" & 
                                             df.rodent$sex == "female",])
   mm <-df.rodent$measurementValue[df.rodent$scientificName == test.sp[i] & 
-                                    df.rodent$measurementType == "mass" & 
+                                    df.rodent$measurementType == "{body mass}" & 
                                     df.rodent$sex == "male"]
   ff <- df.rodent$measurementValue[df.rodent$scientificName == test.sp[i] & 
-                                     df.rodent$measurementType == "mass" & 
+                                     df.rodent$measurementType == "{body mass}" & 
                                      df.rodent$sex == "female"]
   tt <- t.test(mm, ff, alternative = "two.sided", paired = FALSE)
   test.t.test$tt.p.value[i] = tt$p.value
@@ -227,10 +213,10 @@ colnames(rodent.t.test.mass) = columns
 
 for(i in 1:length(rodent.sp)){
   rodent.t.test.mass$sp.name[i] <- rodent.sp[i]
-  rodent.t.test.mass$n.male[i] <- nrow(df.rodent[df.rodent$scientificName == rodent.sp[i] & df.rodent$measurementType == "mass" & df.rodent$sex == "male",])
-  rodent.t.test.mass$n.female[i] <- nrow(df.rodent[df.rodent$scientificName == rodent.sp[i] & df.rodent$measurementType == "mass" & df.rodent$sex == "female",])
-  mm <- df.rodent$measurementValue[df.rodent$scientificName == rodent.sp[i] & df.rodent$measurementType == "mass" & df.rodent$sex == "male"]
-  ff <- df.rodent$measurementValue[df.rodent$scientificName == rodent.sp[i] & df.rodent$measurementType == "mass" & df.rodent$sex == "female"]
+  rodent.t.test.mass$n.male[i] <- nrow(df.rodent[df.rodent$scientificName == rodent.sp[i] & df.rodent$measurementType == "{body mass}" & df.rodent$sex == "male",])
+  rodent.t.test.mass$n.female[i] <- nrow(df.rodent[df.rodent$scientificName == rodent.sp[i] & df.rodent$measurementType == "{body mass}" & df.rodent$sex == "female",])
+  mm <- df.rodent$measurementValue[df.rodent$scientificName == rodent.sp[i] & df.rodent$measurementType == "{body mass}" & df.rodent$sex == "male"]
+  ff <- df.rodent$measurementValue[df.rodent$scientificName == rodent.sp[i] & df.rodent$measurementType == "{body mass}" & df.rodent$sex == "female"]
   if(isTRUE(length(mm) < 10 & length(mm) < 10)){ #need to see if less that 10 of non NA 
     next
   }
@@ -246,12 +232,12 @@ for(i in 1:length(rodent.sp)){
   else{
     rodent.t.test.mass$sig[i] = "FALSE"
   }
-  tg <- t.test(df.rodent$measurementValue[df.rodent$scientificName == rodent.sp[i] & df.rodent$measurementType == "mass" & df.rodent$sex == "male"],
-               df.rodent$measurementValue[df.rodent$scientificName == rodent.sp[i] & df.rodent$measurementType == "mass" & df.rodent$sex == "female"],
+  tg <- t.test(df.rodent$measurementValue[df.rodent$scientificName == rodent.sp[i] & df.rodent$measurementType == "{body mass}" & df.rodent$sex == "male"],
+               df.rodent$measurementValue[df.rodent$scientificName == rodent.sp[i] & df.rodent$measurementType == "{body mass}" & df.rodent$sex == "female"],
                alternative = "greater", paired = FALSE)
   rodent.t.test.mass$tg.p.value[i] = tg$p.value
-  tl <- t.test(df.rodent$measurementValue[df.rodent$scientificName == rodent.sp[i] & df.rodent$measurementType == "mass" & df.rodent$sex == "male"],
-               df.rodent$measurementValue[df.rodent$scientificName == rodent.sp[i] & df.rodent$measurementType == "mass" & df.rodent$sex == "female"],
+  tl <- t.test(df.rodent$measurementValue[df.rodent$scientificName == rodent.sp[i] & df.rodent$measurementType == "{body mass}" & df.rodent$sex == "male"],
+               df.rodent$measurementValue[df.rodent$scientificName == rodent.sp[i] & df.rodent$measurementType == "{body mass}" & df.rodent$sex == "female"],
                alternative = "less", paired = FALSE)
   rodent.t.test.mass$tl.p.value[i] = tl$p.value
   if(isTRUE(tg$p.value <= 0.05)){
@@ -266,17 +252,16 @@ for(i in 1:length(rodent.sp)){
 }
 
 write.csv(rodent.t.test.mass, "rodent.t.test.mass.csv")
-rodent.t.test.mass <- read.csv("https://data.cyverse.org/dav-anon/iplant/home/rwalls/FuTRES_data/Projects/SSD_Rodents/rodent.t.test.mass.csv", header = TRUE)
 
 rodent.t.test.length <- data.frame(rodent.sp, matrix(ncol = length(columns))) #should have 188 rows 
 colnames(rodent.t.test.length) = columns
 
 for(i in 1:length(rodent.sp)){
   rodent.t.test.length$sp.name[i] <- rodent.sp[i]
-  rodent.t.test.length$n.male[i] <- nrow(df.rodent[df.rodent$scientificName == rodent.sp[i] & df.rodent$measurementType == "total.length" & df.rodent$sex == "male",])
-  rodent.t.test.length$n.female[i] <- nrow(df.rodent[df.rodent$scientificName == rodent.sp[i] & df.rodent$measurementType == "total.length" & df.rodent$sex == "female",])
-  mm <- df.rodent$measurementValue[df.rodent$scientificName == rodent.sp[i] & df.rodent$measurementType == "total.length" & df.rodent$sex == "male"]
-  ff <- df.rodent$measurementValue[df.rodent$scientificName == rodent.sp[i] & df.rodent$measurementType == "total.length" & df.rodent$sex == "female"]
+  rodent.t.test.length$n.male[i] <- nrow(df.rodent[df.rodent$scientificName == rodent.sp[i] & df.rodent$measurementType == "{body length}" & df.rodent$sex == "male",])
+  rodent.t.test.length$n.female[i] <- nrow(df.rodent[df.rodent$scientificName == rodent.sp[i] & df.rodent$measurementType == "{body length}" & df.rodent$sex == "female",])
+  mm <- df.rodent$measurementValue[df.rodent$scientificName == rodent.sp[i] & df.rodent$measurementType == "{body length}" & df.rodent$sex == "male"]
+  ff <- df.rodent$measurementValue[df.rodent$scientificName == rodent.sp[i] & df.rodent$measurementType == "{body length}" & df.rodent$sex == "female"]
   if(isTRUE(length(mm) < 10 & length(mm) < 10)){ #need to see if less that 10 of non NA 
     next
   }
@@ -292,12 +277,12 @@ for(i in 1:length(rodent.sp)){
   else{
     rodent.t.test.length$sig[i] = "FALSE"
   }
-  tg <- t.test(df.rodent$measurementValue[df.rodent$scientificName == rodent.sp[i] & df.rodent$measurementType == "total.length" & df.rodent$sex == "male"],
-               df.rodent$measurementValue[df.rodent$scientificName == rodent.sp[i] & df.rodent$measurementType == "total.length" & df.rodent$sex == "female"],
+  tg <- t.test(df.rodent$measurementValue[df.rodent$scientificName == rodent.sp[i] & df.rodent$measurementType == "{body length}" & df.rodent$sex == "male"],
+               df.rodent$measurementValue[df.rodent$scientificName == rodent.sp[i] & df.rodent$measurementType == "{body length}" & df.rodent$sex == "female"],
                alternative = "greater", paired = FALSE)
   rodent.t.test.length$tg.p.value[i] = tg$p.value
-  tl <- t.test(df.rodent$measurementValue[df.rodent$scientificName == rodent.sp[i] & df.rodent$measurementType == "total.length" & df.rodent$sex == "male"],
-               df.rodent$measurementValue[df.rodent$scientificName == rodent.sp[i] & df.rodent$measurementType == "total.length" & df.rodent$sex == "female"],
+  tl <- t.test(df.rodent$measurementValue[df.rodent$scientificName == rodent.sp[i] & df.rodent$measurementType == "{body length}" & df.rodent$sex == "male"],
+               df.rodent$measurementValue[df.rodent$scientificName == rodent.sp[i] & df.rodent$measurementType == "{body length}" & df.rodent$sex == "female"],
                alternative = "less", paired = FALSE)
   rodent.t.test.length$tl.p.value[i] = tl$p.value
   if(isTRUE(tg$p.value <= 0.05)){
@@ -312,8 +297,6 @@ for(i in 1:length(rodent.sp)){
 }
 
 write.csv(rodent.t.test.length, "rodent.t.test.length.csv")
-
-rodent.t.test.length <- read.csv("https://data.cyverse.org/dav-anon/iplant/home/rwalls/FuTRES_data/Projects/SSD_Rodents/rodent.t.test.length.csv", header = TRUE)
 
 ##plot species-level relationships----
 

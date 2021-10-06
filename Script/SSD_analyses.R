@@ -1,3 +1,35 @@
+# Trend of sexual dimorphism at the species level across Rodentia
+# Meghan A. Balk
+# meghan.balk@gmail.com
+
+##load packages----
+require(tidyverse)
+require(nlme)
+require(dplyr)
+require(ggplot2)
+require(reshape2)
+require(plyr)
+require(stringr)
+require(utils)
+require(taxize)
+library(picante)
+library(ape)
+library(adephylo)
+library(ade4)
+library(phylobase)
+library(geiger)
+library(phytools)
+library(AICcmodavg)
+library(caper)
+require(lmodel2)
+require(visreg)
+require(car)
+require(ggtree)
+
+## LOAD DATA ----
+tree <- read.nexus("https://data.cyverse.org/dav-anon/iplant/home/rwalls/FuTRES_data/Projects/SFritz.tre")
+
+
 ##PeMa test----
 #two sample test; two sided
 pema <- df.rodent[df.rodent$scientificName == "Peromyscus maniculatus",]
