@@ -105,7 +105,7 @@ rodent.table <- df.rodent %>%
 write.csv(rodent.table, "rodent.table.csv")
 
 ##PeMa test----
-#two sample test; two sided
+#two sample test; two side
 pema <- df.rodent[df.rodent$scientificName == "Peromyscus maniculatus",]
 tt <- t.test(pema$measurementValue[pema$measurementType == "{body mass}" & pema$sex == "male"],
              pema$measurementValue[pema$measurementType == "{body mass}" & pema$sex == "female"],
